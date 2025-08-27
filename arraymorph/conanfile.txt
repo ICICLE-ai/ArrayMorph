@@ -1,0 +1,7 @@
+[requires]
+azure-sdk-for-cpp/1.11.3
+aws-sdk-cpp/1.11.619
+
+[generators]
+CMakeDeps
+CMakeToolchain

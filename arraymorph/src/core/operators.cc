@@ -1,5 +1,5 @@
-#include "operators.h"
-#include "logger.h"
+#include "arraymorph/core/operators.h"
+#include "arraymorph/core/logger.h"
 #include <assert.h>
 #include <time.h>
 #include <chrono>

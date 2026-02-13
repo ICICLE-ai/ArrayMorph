@@ -1,8 +1,8 @@
 #ifndef __CONSTANTS__
 #define __CONSTANTS__
 
+#include <string>
 #include <vector>
-#include<string>
 
 // #define LOG_ENABLE
 // #define PROFILE_ENABLE
@@ -18,41 +18,18 @@ const int connectTimeoutMs = 30000;
 const int poolSize = 8192;
 const int retries = 3;
 
-const int THREAD_NUM=256;
+const int THREAD_NUM = 256;
 
 extern std::string BUCKET_NAME;
 
 typedef struct Result {
-	std::vector<char> data;
+  std::vector<char> data;
 } Result;
 
-enum QPlan {
-	NONE=-1,
-	GET=0
-};
+enum QPlan { NONE = -1, GET = 0 };
 
-enum SPlan
-{
-	S3=0,
-	GOOGLE,
-	AZURE_BLOB
-};
+enum SPlan { S3 = 0, GOOGLE, AZURE_BLOB };
 
 extern SPlan SP;
 
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,0 +1,41 @@
+# https://just.systems
+# Variables
+
+BUILD_DIR := "build"
+COMPILER_STD := "gnu20"
+
+# Set this to the path where H5Py installs HDF5 binary. On macOS its .dylib, Linux .so, Windows .dll
+
+H5PY_HDF5_DIR := "../.venv/lib/python3.14/site-packages/h5py/.dylibs"
+
+# Settings
+
+set dotenv-load := true
+set export := true
+
+# Default recipe: list available commands
+default:
+    @just --list
+
+# 1. Install dependencies via Conan
+
+# We put all .pc and .ini files in a hidden .conan_deps folder
+deps:
+    conan install . --build=missing -s compiler.cppstd={{ COMPILER_STD }}
+
+# 2. Setup the CMake build environment
+setup:
+    export H5PY_HDF5_DIR={{ H5PY_HDF5_DIR }}; \
+    cmake --preset conan-release
+
+build:
+    cmake --build --preset conan-release
+
+# 5. Full build from scratch
+full-build: deps setup build
+
+# 6. Clean all build and dependency artifacts
+clean:
+    rm -rf {{ BUILD_DIR }}
+
+full-clean-build: clean full-build

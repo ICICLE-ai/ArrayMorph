@@ -1,50 +1,54 @@
-# Set the template VOL connector name
-set (TVC_NAME arraymorph)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_CXX_STANDARD 20)
-#Load required services/packages: This basic example uses S3.
-find_package(AWSSDK REQUIRED COMPONENTS s3)
-find_package(CURL REQUIRED)
-find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
-# find_package(OpenMP REQUIRED)
-find_package(OpenSSL REQUIRED)
+# 1. Include directories
+# In CMake, you typically set these per-target rather than globally
+set(PROJECT_INCLUDE_DIRS
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+)
 
-# Build the template VOL
-add_library (${TVC_NAME} SHARED s3vl_vol_connector.cc)
-add_library (CONSTANTS constants.cc)
-add_library (OPERATORS operators.cc)
-add_library (VL_CHUNK_OBJ s3vl_chunk_obj.cc)
-add_library (VL_FILE s3vl_file_callbacks.cc)
-add_library (VL_DSET s3vl_dataset_callbacks.cc)
-add_library (VL_DSET_OBJ s3vl_dataset_obj.cc)
-add_library (VL_GROUP s3vl_group_callbacks.cc)
-add_library (UTILS utils.cc)
+# 2. Internal Static Libraries
+add_library(utils STATIC core/utils.cc)
+target_include_directories(utils PUBLIC ${PROJECT_INCLUDE_DIRS})
+target_link_libraries(utils PUBLIC ${HDF5_LIBRARIES})
 
-target_link_libraries(OPERATORS PRIVATE Azure::azure-storage-blobs)
-target_link_libraries(OPERATORS PUBLIC ${OPENSSL_LIBRARIES})
-message(STATUS "AWS SDK LIBRARIES: ${AWSSDK_LINK_LIBRARIES}")
-message(STATUS "AWS SDK INCLUDE DIRS: ${AWSSDK_INCLUDE_DIRS}")
-target_link_libraries(OPERATORS PUBLIC ${AWSSDK_LINK_LIBRARIES})
-# target_include_directories(OPERATORS
-#     PUBLIC
-#     ${AWSSDK_INCLUDE_DIRS}
-# )
-target_link_libraries(OPERATORS PUBLIC CONSTANTS)
-target_link_libraries(VL_CHUNK_OBJ OPERATORS)
-target_link_libraries(VL_CHUNK_OBJ UTILS)
-target_link_libraries(VL_DSET_OBJ VL_CHUNK_OBJ)
-target_link_libraries(VL_FILE OPERATORS)
-# target_link_libraries(storage_planner VL_DSET_OBJ)
-# target_link_libraries (storage_planner ${HDF5_C_LIBRARIES})
-# target_link_libraries(VL_DSET_OBJ OpenMP::OpenMP_CXX)
-target_link_libraries(VL_DSET VL_FILE)
-target_link_libraries(VL_DSET VL_DSET_OBJ)
-target_link_libraries(VL_GROUP VL_DSET)
-target_link_libraries(${TVC_NAME} VL_DSET)
-target_link_libraries(${TVC_NAME} VL_FILE)
-target_link_libraries(${TVC_NAME} VL_GROUP)
-target_link_libraries(${TVC_NAME} ${HDF5_C_LIBRARIES})
+add_library(constants STATIC core/constants.cc)
+target_include_directories(constants PUBLIC ${PROJECT_INCLUDE_DIRS})
 
-# set_target_properties (${TVC_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
-set_target_properties (${TVC_NAME} PROPERTIES SOVERSION 1)
-set_target_properties (${TVC_NAME} PROPERTIES PUBLIC_HEADER "${TVC_NAME}.h")
+# all_deps would be your list of dependencies (AWS, Azure, SSL, etc.)
+add_library(operators STATIC core/operators.cc)
+target_include_directories(operators PUBLIC ${PROJECT_INCLUDE_DIRS})
+target_link_libraries(operators PUBLIC constants ${ALL_DEPS})
+
+add_library(chunk_obj STATIC s3vl/chunk_obj.cc)
+target_include_directories(chunk_obj PUBLIC ${PROJECT_INCLUDE_DIRS})
+target_link_libraries(chunk_obj PUBLIC operators utils ${ALL_DEPS})
+
+add_library(dataset_obj STATIC s3vl/dataset_obj.cc)
+target_include_directories(dataset_obj PUBLIC ${PROJECT_INCLUDE_DIRS})
+target_link_libraries(dataset_obj PUBLIC chunk_obj ${ALL_DEPS})
+
+add_library(file_callbacks STATIC s3vl/file_callbacks.cc)
+target_include_directories(file_callbacks PUBLIC ${PROJECT_INCLUDE_DIRS})
+target_link_libraries(file_callbacks PUBLIC operators ${ALL_DEPS})
+
+add_library(dataset_callbacks STATIC s3vl/dataset_callbacks.cc)
+target_include_directories(dataset_callbacks PUBLIC ${PROJECT_INCLUDE_DIRS})
+target_link_libraries(dataset_callbacks PUBLIC file_callbacks dataset_obj ${ALL_DEPS})
+
+add_library(group_callbacks STATIC s3vl/group_callbacks.cc)
+target_include_directories(group_callbacks PUBLIC ${PROJECT_INCLUDE_DIRS})
+target_link_libraries(group_callbacks PUBLIC dataset_callbacks ${ALL_DEPS})
+
+# 3. The Final VOL Connector (shared library)
+add_library(array_morph SHARED s3vl/vol_connector.cc)
+set_target_properties(array_morph PROPERTIES PREFIX "lib_")
+target_include_directories(array_morph PUBLIC ${PROJECT_INCLUDE_DIRS})
+target_link_libraries(array_morph PUBLIC
+    dataset_callbacks
+    file_callbacks
+    group_callbacks
+    ${ALL_DEPS}
+)
+
+install(TARGETS array_morph
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)

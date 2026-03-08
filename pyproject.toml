@@ -1,36 +1,52 @@
 [build-system]
-requires = ["scikit-build-core", "setuptools-scm"]
+requires = ["scikit-build-core>=0.11", "cmake>=3.20", "ninja"]
 build-backend = "scikit_build_core.build"
 
 [project]
 name = "arraymorph"
-dynamic = ["version"]
+version = "0.2.0"
 description = "HDF5 VOL connector for cloud object storage (AWS S3, Azure Blob)"
 readme = "README.md"
 license = { text = "MIT" }
-authors = [{ name = "ruochenj123, wangtg2013" }]
-requires-python = ">=3.9"
-dependencies = ["h5py>=3.11.0"]
+authors = [{ name = "ICICLE AI Institute" }]
+requires-python = ">=3.10"
+
+# Important: pin h5py, because this package is intentionally coupled
+# to h5py's bundled HDF5 at runtime.
+dependencies = ["h5py>=3.10,<3.16"]
 
 [project.urls]
 Homepage = "https://github.com/ICICLE-ai/ArrayMorph"
 Repository = "https://github.com/ICICLE-ai/ArrayMorph"
 Issues = "https://github.com/ICICLE-ai/ArrayMorph/issues"
 
-
-# --- scikit-build-core settings ---
-
 [tool.scikit-build]
 cmake.source-dir = "lib"
 cmake.build-type = "Release"
-build.verbose = true
+cmake.verbose = true
 wheel.packages = ["src/arraymorph"]
-metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 
 [tool.scikit-build.cmake.define]
 CMAKE_POSITION_INDEPENDENT_CODE = "ON"
 CMAKE_TOOLCHAIN_FILE = { env = "CMAKE_TOOLCHAIN_FILE", default = "" }
-HDF5_DIR = { env = "HDF5_DIR", default = "" }
+H5PY_HDF5_DIR = { env = "H5PY_HDF5_DIR", default = "" }
 
-[tool.setuptools_scm]
-local_scheme = "no-local-version"
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-* cp313-*"
+skip = ["*-win32", "*-manylinux_i686", "*-musllinux*"]
+test-command = "python -c 'import arraymorph, h5py; print(\"arraymorph+h5py imported successfully\")'"
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+before-all = [
+    "dnf install -y perl perl-IPC-Cmd ca-certificates",
+]
+before-build = [
+    "pip install 'conan<3' 'h5py>=3.10,<3.16'",
+    "conan profile detect --force",
+    "conan lock create {package}/lib -s build_type=Release --lockfile-out={package}/lib/conan.lock",
+    "conan install {package}/lib --lockfile={package}/lib/conan.lock --build=missing -of {package}/lib/build",
+]
+environment = { CMAKE_TOOLCHAIN_FILE="/project/lib/build/build/Release/generators/conan_toolchain.cmake" }
+repair-wheel-command = ""

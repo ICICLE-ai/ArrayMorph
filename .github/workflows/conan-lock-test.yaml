@@ -1,0 +1,48 @@
+name: Conan Lock Test
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "Dockerfile.conan-lock"
+      - "Dockerfile"
+      - "lib/**"
+      - "src/**"
+      - "pyproject.toml"
+      - ".github/workflows/conan-lock-test.yaml"
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile.conan-lock"
+      - "Dockerfile"
+      - "lib/**"
+      - "src/**"
+      - "pyproject.toml"
+      - ".github/workflows/conan-lock-test.yaml"
+
+jobs:
+  docker_conan_lock:
+    name: Docker Conan lock build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Dockerfile.conan-lock
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.conan-lock
+          platforms: linux/amd64
+          push: false
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: arraymorph-conan-lock-test:ci

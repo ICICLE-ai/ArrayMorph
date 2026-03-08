@@ -1,37 +1,62 @@
-# https://just.systems
-# Variables
+# ArrayMorph native build helpers
+# Runs inside lib/
 
-BUILD_DIR := "build"
-VCPKG_TOOLCHAIN := env("VCPKG_ROOT", home_directory() / ".vcpkg") / "scripts/buildsystems/vcpkg.cmake"
+set shell := ["bash", "-cu"]
 
-# Set this to the path where H5Py installs HDF5 binary. On macOS its .dylib, Linux .so, Windows .dll
+BUILD_TYPE := env_var_or_default("BUILD_TYPE", "Release")
 
-HDF5_DIR := `../.venv/bin/python -c "import h5py,os;d=os.path.dirname(h5py.__file__);print(os.path.join(d,'.dylibs') if os.path.exists(os.path.join(d,'.dylibs')) else os.path.join(os.path.dirname(d),'h5py.libs'))"`
+# --- Recipes ---
 
-# Settings
-set dotenv-load := true
-set export := true
-
-# Default recipe: list available commands
+[default]
 default:
     @just --list
 
-# Setup the CMake build environment
-setup:
-    export HDF5_DIR={{ HDF5_DIR }}; \
-    cmake -B {{ BUILD_DIR }} -S . \
-        -DCMAKE_TOOLCHAIN_FILE={{ VCPKG_TOOLCHAIN }} \
-        -DCMAKE_BUILD_TYPE=Release \
-        -G Ninja
+# Detect conan profile
+profile:
+    conan profile detect --force
 
-build:
-    cmake --build {{ BUILD_DIR }}
+# Install dependencies
+deps build_type=BUILD_TYPE: profile
+    conan install . \
+        --build=missing \
+        -s build_type={{build_type}} \
+        -s compiler.cppstd=gnu20
 
-# Full build from scratch
-full-build: setup build
+# Configure CMake
+configure build_type=BUILD_TYPE: (deps build_type)
+    cmake -S . -B build/{{build_type}} \
+        -G Ninja \
+        -DCMAKE_BUILD_TYPE={{build_type}} \
+        -DCMAKE_TOOLCHAIN_FILE=build/{{build_type}}/generators/conan_toolchain.cmake
 
-# Clean all build and dependency artifacts
+# Build native library
+build build_type=BUILD_TYPE: (configure build_type)
+    cmake --build build/{{build_type}} --config {{build_type}}
+
+# Run tests (if you add them later)
+test build_type=BUILD_TYPE: (build build_type)
+    ctest --test-dir build/{{build_type}}
+
+# Show dependency tree
+graph:
+    conan graph info .
+
+# Debug info
+info build_type=BUILD_TYPE:
+    @echo "Build dir: build/{{build_type}}"
+    @echo "Toolchain:"
+    @echo "  build/{{build_type}}/generators/conan_toolchain.cmake"
+    @echo ""
+    @echo "HDF5 libs:"
+    find build -name "*hdf5*" || true
+
+# Clean
 clean:
-    rm -rf {{ BUILD_DIR }} vcpkg_installed
+    rm -rf build
 
-full-clean-build: clean full-build
+# Full rebuild
+rebuild build_type=BUILD_TYPE: clean (build build_type)
+
+# Compatibility target
+full-clean-build build_type=BUILD_TYPE: clean (build build_type)
+

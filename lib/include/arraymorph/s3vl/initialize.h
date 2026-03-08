@@ -10,8 +10,8 @@
 #include <exception>
 #include <hdf5.h>
 #include <optional>
+#include <string>
 #include <variant>
-
 static Aws::SDKOptions g_sdk_options;
 
 class S3VLINITIALIZE {
@@ -28,16 +28,6 @@ inline herr_t S3VLINITIALIZE::s3VL_initialize_init(hid_t vipl_id) {
   // Aws::SDKOptions options; // Changed to use global sdk options for proper
   // shutdown
   g_sdk_options.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Off;
-  // curl and OpenSSL global init/cleanup must be called exactly once per
-  // process and are not re-entrant. Python (or another loaded library such as
-  // h5py) may already own those lifecycles. Delegating init/cleanup to the SDK
-  // causes double-free / use-after-free crashes inside CleanupHttp() and
-  // CleanupCrypto() when the HDF5 VOL terminate callback fires at process exit,
-  // after the host process has already torn down those subsystems. Disabling
-  // SDK-managed init/cleanup for both avoids the crashes while leaving curl and
-  // OpenSSL usable for the SDK.
-  g_sdk_options.httpOptions.initAndCleanupCurl = false;
-  g_sdk_options.cryptoOptions.initAndCleanupOpenSSL = false;
   std::set_terminate([]() {
     _exit(0);
   }); // Shutdown conflicts with Python's interpreter shutdown on macOS.
@@ -75,7 +65,10 @@ inline herr_t S3VLINITIALIZE::s3VL_initialize_close() {
   // Proper SDK shutdown.
   global_cloud_client =
       std::monostate{}; // Reset the client's state to trigger destructor
-  Aws::ShutdownAPI(g_sdk_options);
+  //// Intentionally skip Aws::ShutdownAPI() — we're inside HDF5's atexit
+  // teardown where static destruction order is undefined. The process is
+  // exiting; the OS will reclaim all resources.
+  // Aws::ShutdownAPI(g_sdk_options);
   return ARRAYMORPH_SUCCESS;
 }
 

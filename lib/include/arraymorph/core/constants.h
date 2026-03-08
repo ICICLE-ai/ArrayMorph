@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-// #define LOG_ENABLE
+#define LOG_ENABLE
 // #define PROFILE_ENABLE
 #define ARRAYMORPH_SUCCESS 1
 #define ARRAYMORPH_FAIL -1

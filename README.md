@@ -1,330 +1,173 @@
 # ArrayMorph
 
-[![Build Status](https://github.com/ICICLE-ai/arraymorph/actions/workflows/build.yml/badge.svg)](https://github.com/ICICLE-ai/arraymorph/actions/workflows/build.yaml)
+[![Build Status](https://github.com/ICICLE-ai/arraymorph/actions/workflows/build.yaml/badge.svg)](https://github.com/ICICLE-ai/arraymorph/actions/workflows/build.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-ArrayMorph enables efficient storage and retrieval of array data from cloud object stores, supporting AWS S3 and Azure Blob Storage. It is an HDF5 Virtual Object Layer (VOL) plugin that transparently routes HDF5 file operations to cloud storage — existing h5py or HDF5 C++ code works unchanged once the plugin is loaded.
+ArrayMorph is a software to manage array data stored on cloud object storage efficiently. It supports both HDF5 C++ API and h5py API. The data returned by h5py API is numpy arrays. By using h5py API, users can access array data stored on the cloud and feed the read data into machine learning pipelines seamlessly.
 
 **Tag**: CI4AI
+
+## References
+
+- [HDF5 VOL connectors](https://docs.hdfgroup.org/hdf5/develop/_v_o_l.html)
+- [AWS SDK for C++](https://github.com/aws/aws-sdk-cpp)
+- [Azure SDK for C++](https://github.com/Azure/azure-sdk-for-cpp)
+- [h5py documentation](https://docs.h5py.org/en/stable/)
+- [conda-forge](https://conda-forge.org/)
+
+## Acknowledgements
+
+This project is supported by:
+
+*National Science Foundation (NSF) funded AI institute for Intelligent Cyberinfrastructure with Computational Learning in the Environment (ICICLE) (OAC 2112606)*
+
+## Issue reporting
+
+  Please report issues via [GitHub Issues](https://github.com/ICICLE-ai/ArrayMorph/issues). Include your cloud
+  backend, HDF5/h5py versions, steps to reproduce, and any error logs — with cloud credentials redacted.
+
 
 ---
 
 # How-To Guides
 
-## Install ArrayMorph
+## Install dependencies
 
+It is recommended to use Conda (and conda-forge) for managing dependencies.
+
+1. Install [Miniconda](https://docs.anaconda.com/miniconda/)  
+2. Install [conda-build](https://docs.conda.io/projects/conda-build/en/stable/install-conda-build.html) for installing local conda packages
+3. Create and activate environment with dependencies:
+   ```bash
+   conda create -n arraymorph
+   conda activate arraymorph
+   conda install -n arraymorph cmake conda-forge::hdf5=1.14.2 conda-forge::aws-sdk-cpp conda-forge::azure-core-cpp conda-forge::azure-storage-blobs-cpp conda-forge::h5py
+   ```
+
+## Install ArrayMorph via Conda
+### Option 1: Build and Install from Source
+Clone the repository and build the conda package locally:
+   ```bash
+    git clone https://github.com/ICICLE-ai/arraymorph.git
+    cd arraymorph/arraymorph
+    conda build -c conda-forge .
+    conda install -n arraymorph arraymorph --use-local -c conda-forge
+   ```
+
+### Option 2: Install from Pre-built Local Package
+We provide a pre-built conda package in the arraymorph_channel directory. Install it directly using:
+   ```bash
+   git clone https://github.com/ICICLE-ai/arraymorph.git
+   cd arraymorph/arraymorph_channel
+   conda index .
+   conda install -n arraymorph arraymorph -c file://$(pwd) -c conda-forge
+   ```
+
+## Install ArryMorph from source code
+
+### Build ArrayMorph
 ```bash
-pip install arraymorph
+git clone https://github.com/ICICLE-ai/arraymorph.git
+cd arraymorph/arraymorph
+cmake -B ./build -S . -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
+cd build
+make
 ```
 
-Once installed, jump straight to [Configure credentials for AWS S3](#configure-credentials-for-aws-s3) or [Azure](#configure-credentials-for-azure-blob-storage) below.
-
-If you need the standalone `lib_arraymorph` binary, you can [download a pre-built release](#download-a-pre-built-lib_arraymorph) or [build from source](#build-from-source).
-
-## Configure credentials for AWS S3
-
-Use the Python API before opening any HDF5 files:
-
-```python
-import arraymorph
-
-arraymorph.configure_s3(
-    bucket="my-bucket",
-    access_key="MY_ACCESS_KEY",
-    secret_key="MY_SECRET_KEY",
-    region="us-east-1",
-    use_tls=True,
-)
-arraymorph.enable()
-```
-
-Or set environment variables directly:
-
+### Enable VOL plugin:
 ```bash
-export STORAGE_PLATFORM=S3
-export BUCKET_NAME=my-bucket
-export AWS_ACCESS_KEY_ID=MY_ACCESS_KEY
-export AWS_SECRET_ACCESS_KEY=MY_SECRET_KEY
-export AWS_REGION=us-east-1
-export HDF5_PLUGIN_PATH=$(python -c "import arraymorph; print(arraymorph.get_plugin_path())")
+export HDF5_PLUGIN_PATH=/path/to/arraymorph/arraymorph/build/src
 export HDF5_VOL_CONNECTOR=arraymorph
 ```
 
-## Configure credentials for Azure Blob Storage
+## Configure Environment for Cloud Access
+Create a JSON configuration file named `config` at `~/.arraymorph` with the following settings based on your cloud provider:
+### AWS Configuration:
+```json
+{
+    "STORAGE_PLATFORM": "S3",
+    "BUCKET_NAME": "XXXXX",
+    "AWS_ACCESS_KEY_ID": "XXXXX",
+    "AWS_SECRET_ACCESS_KEY": "XXXXX",
+    "AWS_REGION": "us-east-2"
+}
+
+```
+
+### Azure Configuration:
+```json
+{
+    "STORAGE_PLATFORM": "Azure",
+    "BUCKET_NAME": "XXXXX",
+    "AZURE_STORAGE_CONNECTION_STRING": "XXXXX"
+}
+```
+
+### S3-compatible object store configuration (MinIO, Ceph, Garage):
+Set `AWS_ENDPOINT_URL_S3`, `AWS_USE_PATH_STYLE`, and `AWS_SIGNED_PAYLOADS` to match the requirements of most self-hosted S3-compatible stores:
+```json
+{
+    "STORAGE_PLATFORM": "S3",
+    "BUCKET_NAME": "XXXXX",
+    "AWS_ENDPOINT_URL_S3": "XXXXX",
+    "AWS_S3_ADDRESSING_STYLE": "path",
+    "AWS_ACCESS_KEY_ID": "XXXXX",
+    "AWS_SECRET_ACCESS_KEY": "XXXXX",
+    "AWS_REGION": "XXXXX",
+    "AWS_USE_PATH_STYLE": "true",
+    "AWS_USE_TLS": "true",
+    "AWS_SIGNED_PAYLOADS": "true"
+}
+```
+
+## Enable ArrayMorph with h5py in Python
+To enable ArrayMorph when using h5py, import the `arraymorph` package BEFORE importing `h5py`:
 
 ```python
 import arraymorph
-
-arraymorph.configure_azure(
-    container="my-container",
-    connection_string="DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net",
-)
-arraymorph.enable()
-```
-
-Or set environment variables directly:
-
-```bash
-export STORAGE_PLATFORM=Azure
-export BUCKET_NAME=my-container
-export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;..."
-export HDF5_PLUGIN_PATH=$(python -c "import arraymorph; print(arraymorph.get_plugin_path())")
-export HDF5_VOL_CONNECTOR=arraymorph
-```
-
-## Use an S3-compatible object store (MinIO, Ceph, Garage)
-
-Pass `endpoint`, `addressing_style=True`, and `use_signed_payloads=True` to match the requirements of most self-hosted S3-compatible stores:
-
-```python
-import arraymorph
-
-arraymorph.configure_s3(
-    bucket="my-bucket",
-    access_key="MY_ACCESS_KEY",
-    secret_key="MY_SECRET_KEY",
-    endpoint="http://localhost:9000",
-    region="us-east-1",
-    use_tls=False,
-    addressing_style=True,
-    use_signed_payloads=True,
-)
-arraymorph.enable()
-```
-
-## Download a pre-built lib_arraymorph
-
-Each [GitHub release](https://github.com/ICICLE-ai/ArrayMorph/releases) attaches standalone pre-compiled binaries of `lib_arraymorph` for all supported platforms:
-
-| File                               | Platform            |
-| ---------------------------------- | ------------------- |
-| `lib_arraymorph-linux-x86_64.so`   | Linux x86_64        |
-| `lib_arraymorph-linux-aarch64.so`  | Linux aarch64       |
-| `lib_arraymorph-macos-arm64.dylib` | macOS Apple Silicon |
-
-Download the file for your platform from the release assets and set `HDF5_PLUGIN_PATH` to the directory containing it before calling `arraymorph.enable()` or setting `HDF5_VOL_CONNECTOR` manually.
-
-## Build from source
-
-Use this path if you want to compile `lib_arraymorph` yourself — for example to target a specific platform, contribute changes, or build a custom wheel.
-
-### Prerequisites
-
-- [vcpkg](https://github.com/microsoft/vcpkg) — installs the AWS and Azure C++ SDKs via CMake
-- [CMake](https://cmake.org) and [Ninja](https://ninja-build.org)
-- [uv](https://docs.astral.sh/uv/) — Python package manager
-
-### Step 1 — Clone and create a virtual environment
-
-```bash
-git clone https://github.com/ICICLE-ai/ArrayMorph.git
-cd ArrayMorph
-uv venv
-source .venv/bin/activate
-```
-
-### Step 2 — Install h5py
-
-`lib_arraymorph` links against an HDF5 shared library at build time. Rather than requiring a separate system-wide HDF5 installation, the build system points CMake at the `.so` / `.dylib` that h5py already bundles. Install h5py first so those libraries are present:
-
-```bash
-uv pip install h5py
-```
-
-On macOS the bundled libraries land in `.venv/lib/python*/site-packages/h5py/.dylibs/`; on Linux in `.venv/lib/python*/site-packages/h5py.libs/`.
-
-### Step 3 — Configure and build the shared library
-
-```bash
-export HDF5_DIR=$(.venv/bin/python -c "import h5py,os; d=os.path.dirname(h5py.__file__); print(os.path.join(d,'.dylibs') if os.path.exists(os.path.join(d,'.dylibs')) else os.path.join(os.path.dirname(d),'h5py.libs'))")
-
-cmake -B lib/build -S lib \
-    -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT:-~/.vcpkg}/scripts/buildsystems/vcpkg.cmake \
-    -DCMAKE_BUILD_TYPE=Release \
-    -G Ninja
-
-cmake --build lib/build
-```
-
-This produces `lib/build/lib_arraymorph.dylib` on macOS or `lib/build/lib_arraymorph.so` on Linux.
-
-### Optional — Python package
-
-If you also want to use the Python API, install the package in editable mode:
-
-```bash
-HDF5_DIR=$HDF5_DIR \
-CMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT:-~/.vcpkg}/scripts/buildsystems/vcpkg.cmake \
-uv pip install -e .
-```
-
-Or build a redistributable wheel:
-
-```bash
-HDF5_DIR=$HDF5_DIR \
-CMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT:-~/.vcpkg}/scripts/buildsystems/vcpkg.cmake \
-uv build --wheel --no-build-isolation
-```
-
-The wheel is written to `dist/`. Install it in any environment with:
-
-```bash
-pip install dist/arraymorph-*.whl
+import h5py
 ```
 
 ---
 
 # Tutorials
 
-## Write and read a chunked array on AWS S3
+## Run a simple example: Writing and Reading HDF5 files from Cloud
 
-This tutorial walks through writing a 2-D NumPy array to a cloud HDF5 file and reading a slice of it back.
+### Prerequisites:
+- AWS or Azure cloud account with credentials
+- S3 bucket or Azure container
+- ArrayMorph dependencies installed
 
-### Prerequisites
+### Steps:
+1. Activate conda environment  
+   ```bash
+   conda activate arraymorph
+   ```
 
-- An AWS account with an S3 bucket, or an S3-compatible object store
-- ArrayMorph installed (`pip install arraymorph`)
+2. Write sample HDF5 data to the cloud  
+   ```bash
+   cd examples/python
+   python3 write.py
+   ```
 
-### Step 1 — Configure and enable ArrayMorph
-
-```python
-import arraymorph
-
-arraymorph.configure_s3(
-    bucket="my-bucket",
-    access_key="MY_ACCESS_KEY",
-    secret_key="MY_SECRET_KEY",
-    region="us-east-1",
-    use_tls=True,
-)
-arraymorph.enable()
-```
-
-`arraymorph.enable()` sets `HDF5_PLUGIN_PATH` and `HDF5_VOL_CONNECTOR` in the current process. Any `h5py.File(...)` call made after this point is routed through ArrayMorph.
-
-### Step 2 — Write array data
-
-```python
-import h5py
-import numpy as np
-
-data = np.fromfunction(lambda i, j: i + j, (100, 100), dtype="i4")
-
-with h5py.File("demo.h5", "w") as f:
-    f.create_dataset("values", data=data, chunks=(10, 10))
-```
-
-Each 10×10 chunk is stored as a separate object in your S3 bucket.
-
-### Step 3 — Read a slice back
-
-```python
-import h5py
-
-with h5py.File("demo.h5", "r") as f:
-    dset = f["values"]
-    print(dset.dtype)           # int32
-    print(dset[5:15, 5:15])     # fetches only the chunks that overlap this slice
-```
-
-Only the chunks that overlap the requested hyperslab are fetched from cloud storage — no full-file download occurs.
-
+3. Read data back from cloud HDF5 file  
+   ```bash
+   cd examples/python
+   python3 read.py
+   ```
 ---
 
 # Explanation
 
-## How ArrayMorph works
+### How ArrayMorph Works
 
-ArrayMorph is implemented as an HDF5 **Virtual Object Layer (VOL)** connector. The VOL is an abstraction layer inside the HDF5 library that separates the public API from the storage implementation. By providing a plugin that registers itself as a VOL connector, ArrayMorph intercepts every HDF5 file operation before it reaches the native POSIX layer.
+ArrayMorph plugs into the HDF5 stack using a VOL (Virtual Object Layer) plugin that intercepts file operations and routes them to cloud object storage instead of local files. This allows existing HDF5 APIs (both C++ and h5py in Python) to operate on cloud-based data seamlessly, enabling transparent cloud access for scientific or ML pipelines.
 
-When `arraymorph.enable()` is called:
+It supports:
+- Cloud backends: AWS S3, Azure Blob, and S3-compatible storage
+- File formats: Current binary data stream (we plan to extend to other formats like jpg in the future)
+- Languages: C++ and Python (via h5py compatibility)
 
-1. `HDF5_PLUGIN_PATH` is set to the directory containing the compiled shared library (`lib_arraymorph.so` / `lib_arraymorph.dylib`).
-2. `HDF5_VOL_CONNECTOR=arraymorph` tells HDF5 to load and activate that plugin for all subsequent file operations.
+The system is designed to be efficient in latency-sensitive scenarios and aims to integrate well with large-scale distributed training and inference.
 
-From this point, a call like `h5py.File("demo.h5", "w")` does not touch the local filesystem. Instead, the VOL connector:
-
-1. Reads cloud credentials from environment variables and constructs an AWS S3 or Azure Blob client (selected by `STORAGE_PLATFORM`).
-2. On dataset read/write, translates the HDF5 hyperslab selection into a list of chunks and dispatches asynchronous get/put requests against the object store — one object per chunk.
-
-### Chunked storage model
-
-HDF5 datasets are divided into fixed-size chunks (e.g. `chunks=(64, 64)` for a 2-D dataset). ArrayMorph stores each chunk as an independent object in the bucket. The object key encodes the dataset path and chunk coordinates, so a partial read only fetches the chunks that overlap the requested slice. For large chunks, ArrayMorph can issue byte-range requests to retrieve only the needed bytes within a chunk object.
-
-### Async I/O
-
-Both the S3 and Azure backends use asynchronous operations dispatched to a thread pool. This allows ArrayMorph to fetch multiple chunks in parallel, which is important for workloads that access many chunks per read (e.g. strided access patterns in machine learning data loaders).
-
-### Compatibility
-
-Because the interception happens at the VOL layer, no changes to application code are required. Any program that opens HDF5 files with h5py or the HDF5 C++ API will automatically use ArrayMorph once the plugin is loaded.
-
----
-
-# References
-
-## Python API
-
-### `arraymorph.enable() -> None`
-
-Sets `HDF5_PLUGIN_PATH` and `HDF5_VOL_CONNECTOR` in the current process environment. Must be called before any `h5py.File(...)` call.
-
-### `arraymorph.get_plugin_path() -> str`
-
-Returns the directory containing the compiled VOL plugin. Useful when you need to set `HDF5_PLUGIN_PATH` manually.
-
-### `arraymorph.configure_s3(bucket, access_key, secret_key, endpoint=None, region="us-east-2", use_tls=False, addressing_style=False, use_signed_payloads=False) -> None`
-
-Configures the S3 client. All parameters are written to environment variables consumed by the C++ plugin at file-open time.
-
-| Parameter             | Environment variable      | Default     | Description                                          |
-| --------------------- | ------------------------- | ----------- | ---------------------------------------------------- |
-| `bucket`              | `BUCKET_NAME`             | —           | S3 bucket name                                       |
-| `access_key`          | `AWS_ACCESS_KEY_ID`       | —           | Access key ID                                        |
-| `secret_key`          | `AWS_SECRET_ACCESS_KEY`   | —           | Secret access key                                    |
-| `endpoint`            | `AWS_ENDPOINT_URL_S3`     | AWS default | Custom endpoint for S3-compatible stores             |
-| `region`              | `AWS_REGION`              | `us-east-2` | SigV4 signing region                                 |
-| `use_tls`             | `AWS_USE_TLS`             | `false`     | Use HTTPS when `True`                                |
-| `addressing_style`    | `AWS_S3_ADDRESSING_STYLE` | `virtual`   | `path` when `True`; required for most non-AWS stores |
-| `use_signed_payloads` | `AWS_SIGNED_PAYLOADS`     | `false`     | Include request body in SigV4 signature              |
-
-### `arraymorph.configure_azure(container, connection_string=None) -> None`
-
-Configures the Azure Blob client.
-
-| Parameter           | Environment variable              | Default  | Description                     |
-| ------------------- | --------------------------------- | -------- | ------------------------------- |
-| `container`         | `BUCKET_NAME`                     | —        | Azure container name            |
-| `connection_string` | `AZURE_STORAGE_CONNECTION_STRING` | From env | Azure Storage connection string |
-
-## Environment variables
-
-All configuration can be applied via environment variables without using the Python API. This is useful when running HDF5 C++ programs directly.
-
-| Variable                          | Description                                         |
-| --------------------------------- | --------------------------------------------------- |
-| `HDF5_PLUGIN_PATH`                | Directory containing `lib_arraymorph.so` / `.dylib` |
-| `HDF5_VOL_CONNECTOR`              | Must be `arraymorph` to activate the plugin         |
-| `STORAGE_PLATFORM`                | `S3` (default) or `Azure`                           |
-| `BUCKET_NAME`                     | Bucket or container name                            |
-| `AWS_ACCESS_KEY_ID`               | S3 access key                                       |
-| `AWS_SECRET_ACCESS_KEY`           | S3 secret key                                       |
-| `AWS_REGION`                      | SigV4 signing region                                |
-| `AWS_ENDPOINT_URL_S3`             | Custom S3-compatible endpoint URL                   |
-| `AWS_USE_TLS`                     | `true` / `false`                                    |
-| `AWS_S3_ADDRESSING_STYLE`         | `path` or `virtual`                                 |
-| `AWS_SIGNED_PAYLOADS`             | `true` / `false`                                    |
-| `AZURE_STORAGE_CONNECTION_STRING` | Azure connection string                             |
-
-## External references
-
-- [HDF5 VOL connectors](https://docs.hdfgroup.org/hdf5/develop/_v_o_l.html)
-- [AWS SDK for C++](https://github.com/aws/aws-sdk-cpp)
-- [Azure SDK for C++](https://github.com/Azure/azure-sdk-for-cpp)
-- [h5py documentation](https://docs.h5py.org/en/stable/)
-
----
-
-## Acknowledgements
-
-This project is supported by the National Science Foundation (NSF) funded AI institute for Intelligent Cyberinfrastructure with Computational Learning in the Environment (ICICLE) (OAC 2112606).

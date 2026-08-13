@@ -15,12 +15,16 @@ ArrayMorph is a software to manage array data stored on cloud object storage eff
 - [h5py documentation](https://docs.h5py.org/en/stable/)
 - [conda-forge](https://conda-forge.org/)
 
-
 ## Acknowledgements
 
 This project is supported by:
 
 *National Science Foundation (NSF) funded AI institute for Intelligent Cyberinfrastructure with Computational Learning in the Environment (ICICLE) (OAC 2112606)*
+
+## Issue reporting
+
+  Please report issues via [GitHub Issues](https://github.com/ICICLE-ai/ArrayMorph/issues). Include your cloud
+  backend, HDF5/h5py versions, steps to reproduce, and any error logs — with cloud credentials redacted.
 
 
 ---

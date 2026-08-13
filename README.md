@@ -7,6 +7,22 @@ ArrayMorph is a software to manage array data stored on cloud object storage eff
 
 **Tag**: CI4AI
 
+## References
+
+- [HDF5 VOL connectors](https://docs.hdfgroup.org/hdf5/develop/_v_o_l.html)
+- [AWS SDK for C++](https://github.com/aws/aws-sdk-cpp)
+- [Azure SDK for C++](https://github.com/Azure/azure-sdk-for-cpp)
+- [h5py documentation](https://docs.h5py.org/en/stable/)
+- [conda-forge](https://conda-forge.org/)
+
+
+## Acknowledgements
+
+This project is supported by:
+
+*National Science Foundation (NSF) funded AI institute for Intelligent Cyberinfrastructure with Computational Learning in the Environment (ICICLE) (OAC 2112606)*
+
+
 ---
 
 # How-To Guides
@@ -151,20 +167,3 @@ It supports:
 
 The system is designed to be efficient in latency-sensitive scenarios and aims to integrate well with large-scale distributed training and inference.
 
----
-
-## References
-
-- [HDF5 VOL connectors](https://docs.hdfgroup.org/hdf5/develop/_v_o_l.html)
-- [AWS SDK for C++](https://github.com/aws/aws-sdk-cpp)
-- [Azure SDK for C++](https://github.com/Azure/azure-sdk-for-cpp)
-- [h5py documentation](https://docs.h5py.org/en/stable/)
-- [conda-forge](https://conda-forge.org/)
-
----
-
-## Acknowledgements
-
-This project is supported by:
-
-*National Science Foundation (NSF) funded AI institute for Intelligent Cyberinfrastructure with Computational Learning in the Environment (ICICLE) (OAC 2112606)*

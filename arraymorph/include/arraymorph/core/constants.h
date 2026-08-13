@@ -15,7 +15,6 @@
 const int s3Connections = 256;
 const int requestTimeoutMs = 30000;
 const int connectTimeoutMs = 30000;
-const int poolSize = 8192;
 const int retries = 3;
 
 const int THREAD_NUM = 256;

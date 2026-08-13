@@ -22,21 +22,9 @@ build:
     mkdir -p ${PREFIX}/lib/arraymorph
     # Install library
     cp ./build/src/libarraymorph.so ${PREFIX}/lib/arraymorph/
-    # Install all related scripts
-    mkdir -p ${PREFIX}/bin/arraymorph
-    cp ./scripts/* ${PREFIX}/bin/arraymorph
-    # Install activation/deactivation scripts
-    mkdir -p ${PREFIX}/etc/conda/activate.d
-    mkdir -p ${PREFIX}/etc/conda/deactivate.d
-    cp activate.sh ${PREFIX}/etc/conda/activate.d/arraymorph-activate.sh
-    cp deactivate.sh ${PREFIX}/etc/conda/deactivate.d/arraymorph-deactivate.sh
-    # Make scripts executable
-    chmod +x ${PREFIX}/etc/conda/activate.d/arraymorph-activate.sh
-    chmod +x ${PREFIX}/etc/conda/deactivate.d/arraymorph-deactivate.sh
-  post-link: |
-    #!/bin/bash
-    export HDF5_PLUGIN_PATH=$CONDA_PREFIX/lib/arraymorph/
-    export HDF5_VOL_CONNECTOR=arraymorph
+    # Install the Python package
+    mkdir -p ${SP_DIR}/arraymorph
+    cp ./arraymorph/__init__.py ${SP_DIR}/arraymorph/
 
 requirements:
   build:
@@ -60,6 +48,8 @@ requirements:
     - conda-forge::h5py
 
 test:
+  imports:
+    - arraymorph
   commands:
     - test -f $PREFIX/lib/arraymorph/libarraymorph.so
     - ldd $PREFIX/lib/arraymorph/libarraymorph.so  # Verify dependencies

@@ -62,10 +62,13 @@ inline herr_t S3VLINITIALIZE::s3VL_initialize_init(hid_t vipl_id) {
 
 inline herr_t S3VLINITIALIZE::s3VL_initialize_close() {
   Logger::log("------ Close VOL");
-  // Proper SDK shutdown.
-  global_cloud_client =
-      std::monostate{}; // Reset the client's state to trigger destructor
-  Aws::ShutdownAPI(g_sdk_options);
+
+  if (std::holds_alternative<std::unique_ptr<Aws::S3::S3Client>>(global_cloud_client)) {
+    std::get<std::unique_ptr<Aws::S3::S3Client>>(global_cloud_client).release(); // Releases ownership without deleting
+  }
+  else if (std::holds_alternative<std::unique_ptr<Azure::Storage::Blobs::BlobContainerClient>>(global_cloud_client)) {
+    std::get<std::unique_ptr<Azure::Storage::Blobs::BlobContainerClient>>(global_cloud_client).release();
+  }
   return ARRAYMORPH_SUCCESS;
 }
 

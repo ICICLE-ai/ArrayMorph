@@ -60,15 +60,19 @@ CloudClient get_client() {
     s3ClientConfig->retryStrategy =
         std::make_shared<Aws::Client::StandardRetryStrategy>(retries);
 #ifdef POOLEXECUTOR
-    s3ClientConfig->executor =
-        Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>("test",
-                                                                     poolSize);
+    try {
+        s3ClientConfig->executor =
+            Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>("test",
+                                                                         s3Connections);
+    } catch (const std::exception& e) {
+        Logger::log("Executor creation failed: ", e.what());
+    }
 #endif
     Logger::log("------ Create Client config: maxConnections=",
                 s3ClientConfig->maxConnections);
     client = std::make_unique<Aws::S3::S3Client>(
         cred, std::move(*s3ClientConfig), payload_signing_policy,
-        use_path_style);
+        !use_path_style); // false => disable virtual addressing
     s3ClientConfig.reset();
   }
   // Azure connection

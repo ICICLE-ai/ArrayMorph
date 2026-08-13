@@ -28,37 +28,31 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 find_package(AWSSDK REQUIRED COMPONENTS core s3)
 
 # Azure SDK
-find_package(AzureSDK CONFIG REQUIRED)
+find_package(azure-core-cpp CONFIG REQUIRED)
+find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
 
 # cURL and OpenSSL
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-if(NOT DEFINED ENV{H5PY_HDF5_DIR})
-  message(FATAL_ERROR "H5PY_HDF5_DIR environment variable not set")
-endif()
-
-# --- HDF5 with h5py workaround ---
-set(H5PY_LIB_DIR "$ENV{H5PY_HDF5_DIR}")
-
 # Find HDF5 for headers (via Conan or system)
 find_package(HDF5 REQUIRED COMPONENTS C)
 
-# Create custom HDF5 dependency: Conan headers + h5py binary
-add_library(hdf5_custom INTERFACE)
-target_include_directories(hdf5_custom INTERFACE ${HDF5_INCLUDE_DIRS})
-target_link_directories(hdf5_custom INTERFACE ${H5PY_LIB_DIR})
-target_link_libraries(hdf5_custom INTERFACE hdf5.310)
+# Inject the found HDF5 headers into the global include path
+include_directories(${HDF5_INCLUDE_DIRS})
 
 # Print confirmation
 message(STATUS "HDF5 found: ${HDF5_VERSION}")
 
-# Collect all dependencies into a list
-set(ALL_DEPS
-    AWS::aws-sdk-cpp-core
-    AWS::aws-sdk-cpp-s3
+# Create an interface dependency target
+add_library(arraymorph_dependencies INTERFACE)
+
+# Bind all found library paths and targets directly to it
+target_link_libraries(arraymorph_dependencies INTERFACE
+    ${AWSSDK_LINK_LIBRARIES}
+    Azure::azure-core
     Azure::azure-storage-blobs
-    hdf5_custom
+    ${HDF5_LIBRARIES}
     OpenSSL::SSL
     OpenSSL::Crypto
     CURL::libcurl

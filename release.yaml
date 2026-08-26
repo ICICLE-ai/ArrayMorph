@@ -1,4 +1,4 @@
-- id: arraymorph:1.2
+- id: arraymorph:1.3
   owner: Ruochen Jiang, Rakesh Rajeev, Tinggang Wang, Spyros Blanas
   name: ArrayMorph for Cloud HDF5
   primaryThrust: core/CI4AI
@@ -6,9 +6,15 @@
     ArrayMorph enables efficient storage and retrieval of array data from cloud object stores,
     supporting platforms including AWS S3, Azure Blob Storage, and S3-compatible storage.
     It is designed to accelerate scientific and AI workloads that rely on partial array access.
-  componentVersion: 1.2
-  status: Prototype
-  targetIcicleRelease: 2026-08
+  componentVersion: 1.3
+  status: PrototypeRelease
+  targetIcicleRelease: "2026-08"
+  hasDependentComponents:
+    - related_to: arraymorph:1.2
+      relationship_type: DependsOn
   publicAccess: true
-  licenseUrl: https://opensource.org/licenses/MIT
+  licenseUrl: https://github.com/ICICLE-ai/ArrayMorph?tab=MIT-1-ov-file
   sourceCodeUrl: https://github.com/ICICLE-ai/ArrayMorph
+  developerDocumentationAvailable: true
+  trainingTutorialsAvailable: true
+  trainingTutorialsUrl: https://icicle-ai.github.io/training-catalog/docs/category/arraymorph-2
